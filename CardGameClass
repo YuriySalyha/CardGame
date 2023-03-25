@@ -1,0 +1,404 @@
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+
+namespace CardGame
+{
+    class CardGameClass
+    {
+        private int amountOfPlayers = 2;
+        public void StartGame()
+        {
+            var path = Path.Combine("..", "..", "..", "Save.json");
+
+            var allVariables = new Variables();
+
+            var ai = new AiClass();
+
+            var cardsOnTable = new List<BaseCard>();
+
+            var ifPlayerTake = false;
+
+            Console.WriteLine("Use last save?");
+            if (Console.ReadLine() == "yes")
+            {
+                var jsonString = File.ReadAllText(path);
+                allVariables = JsonConvert.DeserializeObject<Variables>(jsonString)!;
+            }
+            else
+            {
+
+                Console.WriteLine("Do you want to play against bots?");
+                if (Console.ReadLine() == "yes")
+                {
+                    allVariables.ifGameWithBots = true;
+                }
+
+                LogClass.Log("Start of The Game");
+                allVariables.allCards.CreateList();
+                LogClass.Log("Created list of all cards");
+
+                Console.Write("Enter amount of players: ");
+                do
+                {
+                    amountOfPlayers = Convert.ToInt32(Console.ReadLine());
+                } while (amountOfPlayers < 2 || amountOfPlayers > 6);
+                LogClass.Log("selected amount of players");
+
+                for (int i = 0; i < amountOfPlayers; i++)
+                {
+                    var player = new Player();
+
+                    allVariables.allPlayers.Add(player);
+                    allVariables.allPlayers[i].setPlayerHand();
+
+                    if (allVariables.ifGameWithBots && i != 0)
+                    {
+                        allVariables.allPlayers[i].isAi = true;
+                        allVariables.allPlayers[i].playerName = $"Bot {i}";
+                    }
+                    else
+                    {
+                        Console.WriteLine("Enter a name of player: ");
+                        allVariables.allPlayers[i].playerName = Console.ReadLine();
+                    }
+                }
+                LogClass.Log("Aded players to list");
+
+                allVariables.trump = ClassForRandom.random.Next(1, 5);
+                allVariables.isTrumpAvaible = false;
+                allVariables.trumpCard = createTrump(AllCards.Cards);
+
+                if (allVariables.trumpCard.ValueOfCard != 0)
+                {
+                    allVariables.trump = allVariables.trumpCard.KindOfCard;
+                    allVariables.isTrumpAvaible = true;
+                }
+
+                Console.WriteLine($"Trump is {allVariables.trump}");
+
+                allVariables.currentPlayer = 0;
+
+                var minimalTrump = 16;
+                LogClass.Log("Creating a trump");
+
+                for (int i = 0; i < allVariables.allPlayers.Count; i++)
+                {
+
+                    foreach (var item in allVariables.allPlayers[i].playerHand)
+                    {
+                        if (item.KindOfCard == allVariables.trump
+                            && item.ValueOfCard < minimalTrump)
+                        {
+
+                            allVariables.currentPlayer = i;
+
+                            minimalTrump = item.ValueOfCard;
+
+                        }
+                    }
+                }
+                //if trump wasn't finded player with index 0 has to move
+            }
+            LogClass.Log("Find player with lowest trump");
+
+
+            LogClass.Log("Start of the game");
+
+            
+            while (true)
+            {
+                LogClass.Log("New turn");
+                var nextPlayer = allVariables.currentPlayer + 1;
+
+                if (nextPlayer >= amountOfPlayers)
+                {
+                    nextPlayer -= amountOfPlayers;
+                }
+
+                Console.WriteLine($"{allVariables.allPlayers[allVariables.currentPlayer].playerName} has to make turn");
+
+                allVariables.allPlayers[allVariables.currentPlayer].SeeCards();
+                LogClass.Log("Methode SeeCards");
+
+                var cardIndex = 0;
+
+                if (cardsOnTable.Any())
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("Values on table: ");
+
+                    cardsOnTable.ForEach(card => Console.WriteLine($"- {card.ValueOfCard}"));
+
+                    Console.WriteLine();
+                    LogClass.Log("Showen cards on table");
+                }
+                if (allVariables.allPlayers[allVariables.currentPlayer].isAi)
+                {
+                    cardIndex = ai.AIAttackTurn(cardsOnTable, allVariables.trump, allVariables.allPlayers[allVariables.currentPlayer].playerHand);
+                    if(cardIndex == -1)
+                    {
+                        endOfTurn(cardsOnTable, allVariables.allPlayers, allVariables.currentPlayer, ref nextPlayer, allVariables.isTrumpAvaible, ref ifPlayerTake, allVariables.trumpCard, ref amountOfPlayers);
+                        continue;
+                    }
+                }
+                else
+                {
+                    do
+                    {
+                        do
+                        {
+                            Console.Write("Choose number of card: ");
+                            cardIndex = Convert.ToInt32(Console.ReadLine()) - 1;
+
+                        } while (cardIndex < 0 || cardIndex > allVariables.allPlayers[allVariables.currentPlayer].playerHand.Count());
+
+                    } while (!ifCanUseCard(cardsOnTable, allVariables.allPlayers[allVariables.currentPlayer].playerHand[cardIndex].ValueOfCard));
+                }
+                LogClass.Log("Founded card to make a turn");
+
+                cardsOnTable.Add(allVariables.allPlayers[allVariables.currentPlayer].playerHand[cardIndex]);
+
+                allVariables.allPlayers[allVariables.currentPlayer].playerHand.RemoveAt(cardIndex);
+
+                allVariables.allPlayers[nextPlayer].SeeCards();
+                LogClass.Log("Method SeeCards");
+
+                Console.WriteLine($"{allVariables.allPlayers[nextPlayer].playerName} defend");
+
+                Console.WriteLine($"Type - {cardsOnTable.LastOrDefault().KindOfCard},  Value - {cardsOnTable.LastOrDefault().ValueOfCard}");
+
+                if (allVariables.allPlayers[nextPlayer].isAi)
+                {
+                    cardIndex = ai.AIDefenceTurn(cardsOnTable, allVariables.trump, allVariables.allPlayers[nextPlayer].playerHand);
+                }
+
+                if (!allVariables.allPlayers[nextPlayer].isAi)
+                {
+                    Console.WriteLine("Do you want to beat it?");
+                }
+
+                if ((cardIndex == -1 && allVariables.allPlayers[nextPlayer].isAi) || (!allVariables.allPlayers[nextPlayer].isAi && Console.ReadLine() == "no"))
+                {
+
+                    allVariables.allPlayers[nextPlayer].playerHand.AddRange(cardsOnTable);
+                    ifPlayerTake = true;
+
+                    endOfTurn(cardsOnTable, allVariables.allPlayers, allVariables.currentPlayer, ref nextPlayer, allVariables.isTrumpAvaible, ref ifPlayerTake, allVariables.trumpCard, ref amountOfPlayers);
+                    LogClass.Log("Cards from table were given to user");
+                    continue;
+                }
+                else
+                {
+                    if (!allVariables.allPlayers[nextPlayer].isAi)
+                    {
+                        checkCardIndex(cardsOnTable, allVariables.allPlayers, cardIndex, allVariables.trump, allVariables.currentPlayer, nextPlayer);
+                    }
+                    LogClass.Log("Founded right card for turn");
+
+                    cardsOnTable.Add(allVariables.allPlayers[nextPlayer].playerHand[cardIndex]);
+
+                    allVariables.allPlayers[nextPlayer].playerHand.RemoveAt(cardIndex);
+
+                    if(allVariables.allPlayers[nextPlayer].playerHand.Count == 0 || allVariables.allPlayers[allVariables.currentPlayer].playerHand.Count == 0)
+                    {
+                        endOfTurn(cardsOnTable, allVariables.allPlayers, allVariables.currentPlayer, ref nextPlayer, allVariables.isTrumpAvaible, ref ifPlayerTake, allVariables.trumpCard, ref amountOfPlayers);
+                        continue;
+                    }
+                    if(ai.AIAttackTurn(cardsOnTable, allVariables.trump, allVariables.allPlayers[allVariables.currentPlayer].playerHand) != -1)
+                    {
+                        LogClass.Log("next phase of turn");
+                        continue;
+                    }
+
+                    if (!allVariables.allPlayers[allVariables.currentPlayer].isAi)
+                    {
+                        var isPossibleToContinue = false;
+                        Console.WriteLine("Do you want to continue?");
+                        if (Console.ReadLine() != "no")
+                        {
+                            foreach (var cardOnTable in cardsOnTable)
+                            {
+                                if (allVariables.allPlayers[allVariables.currentPlayer].playerHand.Any(cardInHand => cardInHand.ValueOfCard == cardOnTable.ValueOfCard))
+                                {
+
+                                    isPossibleToContinue = true;
+                                }
+                            }
+                        }
+                        if(isPossibleToContinue)
+                        {
+                            continue;
+                        }
+                    }
+                }
+
+                endOfTurn(cardsOnTable, allVariables.allPlayers, allVariables.currentPlayer, ref nextPlayer, allVariables.isTrumpAvaible, ref ifPlayerTake, allVariables.trumpCard, ref amountOfPlayers);
+                Console.WriteLine("Do you want to stop and save game");
+                if(Console.ReadLine() == "yes")
+                {
+                    if(File.Exists(path))
+                    {
+                        File.WriteAllText(path, string.Empty);
+                    }
+                    File.WriteAllText(path, JsonConvert.SerializeObject(allVariables));
+                    return;
+                }
+            }
+        }
+
+        private BaseCard createTrump(List<BaseCard> allCards) 
+        {
+            
+            if(allCards.Count == 0)
+            {
+                return new BaseCard(0, 0);
+            }
+            var number = ClassForRandom.random.Next(0, AllCards.Cards.Count);
+            var trumpCard = AllCards.Cards[number];
+            AllCards.Cards.RemoveAt(number);
+
+            return trumpCard;
+        }
+
+        private bool checkCardIndex(List<BaseCard> cardsOnTable, List<Player> allPlayers, int cardIndex, int trump, int currentPlayer, int nextPlayer)
+        {
+            while (true)
+            {
+                do
+                {
+
+                    Console.Write("Choose number of card: ");
+                    cardIndex = Convert.ToInt32(Console.ReadLine()) - 1;
+
+                } while (cardIndex < 0 || cardIndex > allPlayers[currentPlayer].playerHand.Count());
+
+                if (cardsOnTable.Last().KindOfCard != trump
+                    && allPlayers[nextPlayer].playerHand[cardIndex].KindOfCard == trump)
+                {
+                    return true;
+                }
+
+                if (cardsOnTable.Last().KindOfCard == trump
+                    && allPlayers[nextPlayer].playerHand[cardIndex].KindOfCard != trump)
+                {
+                    continue;
+                }
+
+                if (cardsOnTable.Last().ValueOfCard < allPlayers[nextPlayer].playerHand[cardIndex].ValueOfCard)
+                {
+                    return true;
+                }
+            }
+        }
+
+        private void endOfTurn(List<BaseCard> cardsOnTable, List<Player> allPlayers, int currentPlayer, ref int nextPlayer,  bool isTrumpAvaible, ref bool ifPlayerTake, BaseCard trumpCard,ref int amountOfPlayers)
+        {
+            cardsOnTable.Clear();
+
+            GiveCardsToUser(allPlayers, currentPlayer, ref isTrumpAvaible, trumpCard);
+            GiveCardsToUser(allPlayers, nextPlayer, ref isTrumpAvaible, trumpCard);
+
+            if (DeleteUser(allPlayers, currentPlayer))
+            {
+
+                currentPlayer--;
+                if (currentPlayer < 0)
+                {
+                    currentPlayer = amountOfPlayers - 1;
+                    nextPlayer = 0;
+                }
+
+            }
+            DeleteUser(allPlayers, nextPlayer);
+
+            if (!allPlayers.Any())
+            {
+                Console.WriteLine("Game ends with draw");
+                LogClass.Log("Games ended on draw breakpoint");
+                return;
+
+            }
+
+            if (allPlayers.Count == 1)
+            {
+                Console.WriteLine("Game ends");
+                Console.WriteLine($"Player {allPlayers[0].playerName} lost");
+                LogClass.Log("Games ended on lose breakpoint");
+                return;
+            }
+
+            currentPlayer += (ifPlayerTake) ? 2 : 1;
+
+            if (currentPlayer >= amountOfPlayers)
+            {
+                currentPlayer -= amountOfPlayers;
+            }
+            LogClass.Log("End of the turn");
+
+            ifPlayerTake = false;
+        }
+
+        private void GiveCardsToUser(List<Player> allPlayers, int currentPlayer, ref bool isTrumpAvaible, BaseCard trumpCard)
+        { 
+            if (AllCards.Cards.Count > 0)
+            { 
+            while (AllCards.Cards.Count > 0 && allPlayers[currentPlayer].playerHand.Count < 6)
+            {
+                    var number = ClassForRandom.random.Next(0, AllCards.Cards.Count);
+
+                    allPlayers[currentPlayer].playerHand.Add(AllCards.Cards[number]);
+
+                    AllCards.Cards.RemoveAt(number);
+                }
+            }
+            if(allPlayers[currentPlayer].playerHand.Count < 6 && isTrumpAvaible)
+            {
+                allPlayers[currentPlayer].playerHand.Add(trumpCard);
+                isTrumpAvaible = false;
+            }
+            LogClass.Log("Сame out of GiveCardsToUser");
+        }
+
+        private bool DeleteUser(List<Player> allPlayers, int index)
+        {
+            if (!allPlayers[index].playerHand.Any())
+            {
+                allPlayers.RemoveAt(index);
+
+                amountOfPlayers--;
+
+                Console.WriteLine($"{allPlayers[index].playerName} finished the game");
+                LogClass.Log("Deleted player who finish the game");
+                return true;
+            }
+            return false;
+        }
+
+        private bool ifCanUseCard(List<BaseCard> cards, int cardValue)
+        {
+            LogClass.Log("Entered methode ifCanUseCard");
+            if (cards.Count == 0)
+            {
+                LogClass.Log("returned true by 0 elements in list");
+                return true;
+            }
+
+            if (cards.Any(item => item.ValueOfCard == cardValue))
+            {
+                LogClass.Log("returned true by finded result");
+                return true;
+            }
+
+            LogClass.Log("returned false by finded result");
+            return false;
+        }
+    }
+}
+
+
+        
+          
