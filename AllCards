@@ -1,0 +1,34 @@
+using System.Collections.Generic;
+
+namespace CardGame
+{
+    public class AllCards
+    {
+
+        static public List<BaseCard> Cards = new List<BaseCard>();
+        
+        public void CreateList(bool is52card = true)
+        {
+            var minimalCardRang = 6;
+            if(is52card)
+            {
+                minimalCardRang = 2;
+            }
+
+            LogClass.Log("Start of the methode CreateList");
+            Cards.Clear();
+
+            for (var cardType = 1; cardType < 5; cardType++)
+            {
+
+                for (var cardRang = minimalCardRang; cardRang < 15; cardRang++)
+                {
+                    Cards.Add(new BaseCard(cardType, cardRang));
+                }
+        
+            }
+            LogClass.Log("End of the methode CreateList");
+
+        }
+    }
+}
