@@ -1,0 +1,47 @@
+using System;
+using System.Collections.Generic;
+
+namespace CardGame
+{
+    public class Player
+    {
+        public List<BaseCard> playerHand = new List<BaseCard>();
+        public string playerName;
+        public bool isAi = false;
+
+        public Player()
+        {
+
+        }
+        
+        public void setPlayerHand()
+        {
+            for(int i = 0; i < 6; i++)
+            {
+                int currentCardIndex = ClassForRandom.random.Next(0, AllCards.Cards.Count - 1);
+                playerHand.Add(AllCards.Cards[currentCardIndex]);
+                AllCards.Cards.RemoveAt(currentCardIndex);
+            }
+        }
+
+        public void SeeCards()
+        {
+            LogClass.Log("Enter SeeCards methode");
+            Console.WriteLine("Your deck: ");
+
+            var i = 1;
+
+            foreach (var item in playerHand)
+            {
+                
+                Console.WriteLine($" {i}. Type = [{item.KindOfCard}], Value = [{item.ValueOfCard}]");
+
+                i++;
+            }
+
+            Console.WriteLine();
+            LogClass.Log("Exit SeeCards methode");
+        }
+
+    }
+}
