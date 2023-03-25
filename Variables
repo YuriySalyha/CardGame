@@ -1,0 +1,23 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace CardGame
+{
+    public class Variables
+    {
+        public AllCards allCards = new AllCards();
+
+        public bool ifGameWithBots = false;
+
+        public List<Player> allPlayers = new List<Player>();
+
+        public int trump;
+
+        public bool isTrumpAvaible;
+
+        public BaseCard trumpCard;
+
+        public int currentPlayer;
+    }
+}
