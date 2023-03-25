@@ -1,0 +1,22 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+
+namespace CardGame
+{
+    public class LogClass
+    {
+        public static void Log(string input)
+        {
+            var path = Path.Combine("..", "..", "..", "Logs.txt");
+
+            if (!File.Exists(path))
+            {
+                using (File.Create(path)) { }
+            }
+
+            File.AppendAllText(path, $"{input}\nLog time: {DateTime.Now}\n\n");
+        }
+    }
+}
