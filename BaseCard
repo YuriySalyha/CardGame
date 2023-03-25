@@ -1,0 +1,18 @@
+
+namespace CardGame
+{
+    public class BaseCard
+    {
+
+        public int KindOfCard { get; private set; }
+        public int ValueOfCard { get; private set; }
+
+        public BaseCard(int kindOfCard, int valueOfCard)
+        {
+            KindOfCard = kindOfCard;
+            ValueOfCard = valueOfCard;
+        }
+    }
+
+
+}
