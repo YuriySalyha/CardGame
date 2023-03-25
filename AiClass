@@ -1,0 +1,159 @@
+using System.Collections.Generic;
+using System.Linq;
+
+namespace CardGame
+{
+    class AiClass
+    {
+        public int AIAttackTurn(List<BaseCard> cardsOnTable, int trump, List<BaseCard> playerHand)
+        {
+            LogClass.Log("Start of attack currentPlayer");
+
+            List<int> values = cardsOnTable.Select(card => card.ValueOfCard).ToList();
+
+            var result = 0;
+            var isResultChanged = false;
+
+            var firstMove = cardsOnTable.Count == 0 ? true : false;
+
+            var isNecessaryToUseTrump = false;
+
+            var isNecessaryToUseHugeTrump = false;
+            var hugeTrumpValue = 9;
+
+            if (cardsOnTable.Count > 3 || playerHand.Count < 4 || AllCards.Cards.Count < 5)
+            {
+                isNecessaryToUseTrump = true;
+            }
+
+            if (AllCards.Cards.Count < 2 || playerHand.Count < 3 || cardsOnTable.Count > 8)
+            {
+                isNecessaryToUseHugeTrump = true;
+            }
+            LogClass.Log("Created logic to work with trump");
+
+            for (var i = 0; i < playerHand.Count; i++)
+            {
+                if (firstMove)
+                {
+                    if (playerHand[i].KindOfCard != trump && playerHand[i].ValueOfCard < playerHand[result].ValueOfCard)
+                    {
+                        isResultChanged = true;
+                        result = i;
+                    }
+                    continue;
+                }
+                else
+                {
+                    if (values.Contains(playerHand[i].ValueOfCard))
+                    {
+                        if (trump == playerHand[i].KindOfCard)
+                        {
+                            if (!isNecessaryToUseTrump)
+                            {
+                                continue;
+                            }
+                            if (!(playerHand[i].ValueOfCard > hugeTrumpValue && isNecessaryToUseHugeTrump))
+                            {
+                                continue;
+                            }
+                            if (playerHand[i].ValueOfCard < playerHand[result].ValueOfCard && playerHand[result].KindOfCard == trump)
+                            {
+                                isResultChanged = true;
+                                result = i;
+                            }
+                        }
+                        else
+                        {
+                            if (playerHand[i].ValueOfCard < playerHand[result].ValueOfCard)
+                            {
+                                isResultChanged = true;
+                                result = i;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (isResultChanged || firstMove)
+            {
+                LogClass.Log("Founded 'best' card");
+                return result;
+            }
+
+            LogClass.Log("Founded nothing");
+            return -1;
+        }
+
+        public int AIDefenceTurn(List<BaseCard> cardsOnTable, int trump, List<BaseCard> playerHand)
+        {
+            LogClass.Log("Start of defence currentPlayer");
+            var result = 0;
+            var isResultChanged = false;
+
+            var isDefendsAgainstTrump = false;
+
+            var card = cardsOnTable.LastOrDefault();
+
+            LogClass.Log("Created logic to work with trump");
+
+            for (var i = 0; i < playerHand.Count; i++)
+            {
+                if (isDefendsAgainstTrump && playerHand[i].KindOfCard != trump)
+                {
+                    continue;
+                }
+
+                if (isDefendsAgainstTrump)
+                {
+                    if (playerHand[i].ValueOfCard > card.ValueOfCard)
+                    {
+                        result = i;
+                        isResultChanged = true;
+                    }
+                }
+                else
+                {
+                    if (!isResultChanged && playerHand[i].KindOfCard == trump)
+                    {
+                        isResultChanged = true;
+                        result = i;
+                        continue;
+                    }
+
+                    if (playerHand[i].KindOfCard == trump
+                        && playerHand[result].KindOfCard == trump
+                        && playerHand[i].ValueOfCard < playerHand[result].ValueOfCard)
+                    {
+                        isResultChanged = true;
+                        result = i;
+                        continue;
+                    }
+
+                    if (playerHand[i].ValueOfCard > card.ValueOfCard && playerHand[i].KindOfCard == card.KindOfCard)
+                    {
+                        if (!isResultChanged || playerHand[result].KindOfCard == trump)
+                        {
+                            isResultChanged = true;
+                            result = i;
+                            continue;
+                        }
+                        if (playerHand[result].ValueOfCard > playerHand[i].ValueOfCard)
+                        {
+                            result = i;
+                        }
+                    }
+                }
+            }
+
+            if (isResultChanged)
+            {
+                LogClass.Log("Founded 'best' card");
+                return result;
+            }
+
+            LogClass.Log("Founded nothing");
+            return -1;
+        }
+    }
+}
